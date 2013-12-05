@@ -1,0 +1,34 @@
+.lb-w-ext00-cl{
+    /*zoom:1;*/
+    /*IE才需要 hack*/
+}
+.lb-w-ext00-cl:after{
+    content: ".";
+    display: block;
+    height: 0;
+    clear: left;
+    visibility: hidden;
+}
+.lb-w-ext00-fl{
+    float: left;
+}
+.lb-w-ext00-fr{
+    float: right;
+}
+.lb-w-ext00-pr{
+    position: relative;
+}
+#lb-w-ext00-popWrap{
+    position: fixed;
+    top:20px;
+    right:20px;
+    width:200px;
+    height:80px;
+    border:1px solid red;
+    background: -webkit-linear-gradient(top,#fff,#666);
+    z-index: 100000;
+    margin: 0;
+}
+#lb-w-ext00-popWrap div,#lb-w-ext00-popWrap span{
+    margin: 0;
+}
