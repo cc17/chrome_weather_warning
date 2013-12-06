@@ -2,20 +2,35 @@
 	var Promise = LBWeather.Promise,
 		when = LBWeather.when;
 	function WeatherPop() {
+		this.tpl = '<% title %><div class="">x</div>';
 	};
 	LBWeather.extend(WeatherPop.prototype, {
 		render: function(data) {
-			var div = document.createElement('div');
-			div.id = 'lb-w-ext00-popWrap';
-			div.innerHTML = '测试S';
+			var str = LBWeather.template(this.tpl,data);
+			var div = LBWeather.Dom.create(div,{
+				id:'lb-w-ext00-popWrap'
+			});
 			document.body.appendChild(div);
 		},
 		fetchData:function(status){
 			var me = this;
 			when([me.getDubaWeatherCityId(),me.getWarningApi()]).then(done);
-			function done(city_id,warnings){
+			function done(data){
+				if(!(data && data.length >= 2) ){
+					return;
+				}
+				var city_id = data[0],
+					warnings = data[1],
+					warningsData = warnings.data;
+				if(!warningsData){
+					return;
+				}
+
+				//test
+				city_id = 101100601;
+
 				//根据cityid过滤过需要判断的信息
-				var popWarnings = warnings.filter(function(item) {
+				var popWarnings = warningsData.filter(function(item) {
 					return item.cityid == city_id;
 				});
 				if(popWarnings.length == 0){
@@ -34,12 +49,9 @@
 		},
 		getDubaWeatherCityId:function(){
 			var p = new Promise();
-			setTimeout(function(){
-				p.resolve(101010100);
-			},30);
-			/*LBWeather.Ajax.get('http://weather.123.duba.net/weatherinfo/?callback=getDuBaData?t=' + Date.now()/(1000*60),function(res){
-				p.resolve(res);
-			});*/
+			LBWeather.jsonp2Json('http://weather.123.duba.net/weatherinfo/',function(res){
+				p.resolve(res.weatherinfo.cityid);
+			});
 			return p;
 		},
 		getWarningApi:function(){

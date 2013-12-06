@@ -5,7 +5,42 @@
 	var ArrayProto = Array.prototype,
 		hasOwn = Object.prototype.hasOwnProperty,
 		nativeForEach = ArrayProto.forEach,
-		breaker = {};
+		breaker = {},
+		jsonp_prefix = 'lbExt_';
+
+
+	//extend
+	var extend = function(parent, child, isoveride) {
+		isoveride = isoveride == void 0 ? true : isoveride;
+		for (var key in child) {
+			if (!parent[key] || isoveride) {
+				parent[key] = child[key];
+			}
+		}
+		return parent;
+	};
+	//Dom
+	var Dom = LBWeather.Dom = {};
+	extend(Dom,{
+		$:function(id){
+			return document.getElementById(id);
+		},
+		query:function(str){
+			return document.querySelector(str);
+		},
+		hasClass:function(el,className){
+			var _class = trim(el.className);
+			return _class.indexOf(className) > -1;
+		},
+		addClass:function(el,className){
+			el.className += " " + className;
+		},
+		create:function(tagName,props){
+			var el = document.createElement(tagName);
+			extend(el,props);
+			return el
+		}
+	});	
 
 	/*ajax*/
 	var Ajax = (function (){
@@ -18,7 +53,8 @@
 			xhr.onreadystatechange = function(){
 				if ( xhr.readyState !== 4 ) return;
                 if ( ( xhr.status >= 200 && xhr.status < 300 ) || xhr.status === 304 || xhr.status === 1223 || xhr.status === 0 ){
-                        var data = JSON.parse( xhr.responseText );
+                		//坑爹的毒霸接口不能给我返回json，只能多做个判断了
+                        var data = xhr.responseText.indexOf(jsonp_prefix) > -1 ? xhr.responseText : JSON.parse( xhr.responseText );
                         callback.call( window, data );
                 }
                 xhr = null;
@@ -29,16 +65,34 @@
 			get:get
 		}
 	})();
-	//extend
-	var extend = function(parent, child, isoveride) {
-		isoveride = isoveride == void 0 ? true : isoveride;
-		for (var key in child) {
-			if (!parent[key] || isoveride) {
-				parent[key] = child[key];
-			}
-		}
-		return parent;
+	
+	var jsonp = function(url,fn){
+		var timestamp = Math.floor((Date.now())/1000);
+		var _callbackName = jsonp_prefix + timestamp;
+		window[_callbackName] = (function(res){
+			return function(){
+				fn(res);
+			};
+		})();
+		var script = Dom.create('script',{
+			src:url + "?callback=" + _callbackName + '&t=' + timestamp,
+			type:'text/javascript'
+		});
+		document.body.appendChild(script);
 	};
+	//proxyJsonp2Json
+	var jsonp2Json = function(url,fn){
+		var timestamp = Math.floor((Date.now())/1000);
+		var _callbackName = jsonp_prefix + timestamp;
+		Ajax.get(url + "?callback=" + _callbackName + '&t=' + timestamp,function(res){
+			var start = res.indexOf('(');
+			res = JSON.parse(res.substring(start + 1,res.length -1));
+			fn(res);
+		});
+	};
+
+
+
 
 
 	//escape
@@ -87,24 +141,15 @@
 			}
 		}
 	};
-
-	//Dom
-	var Dom = LBWeather.Dom = {};
-	extend(Dom,{
-		$:function(id){
-			return document.getElementById(id);
-		},
-		query:function(str){
-			return document.querySelector(str);
-		},
-		hasClass:function(el,className){
-			var _class = trim(el.className);
-			return _class.indexOf(className) > -1;
-		},
-		addClass:function(el,className){
-			el.className += " " + className;
-		}
-	});
+	//toArray
+	var makeArray = function(obj){
+		var arr = [];
+		each(obj,function(item){
+			arr.push(item);
+		});
+		return arr;
+	};
+	
 	var isWindow = function( obj ) {
 		return obj != null && obj === obj.window;
 	};
@@ -158,7 +203,6 @@
 			}
 			add(tpl.substr(cursor, tpl.length - cursor));
 			code += 'return r.join("");';
-			console.log(code);
 			return new Function(code.replace(/[\r\t\n]/g, '')).apply(data);
 		};
 	};
@@ -187,24 +231,29 @@
 			this.result = arguments;
 			this._isdone = true;
 			for (var i = 0; i < this._callbacks.length; i++) {
-				this._callbacks[i].apply(null, arguments);
+				this._callbacks[i].apply(this.result, arguments);
 			}
 			this._callbacks = [];
 		}
 	};
 	Promise.when = function(){
-		var args = [].slice.call(arguments,0);
+		var AllPromises = [].slice.call(arguments,0)[0];
 		var p = new Promise();
-		var promiseLen = args[0].length;
-		args[0].forEach(function(item){
-			item.then(checkAllPromiseDone);
+		var promiseLen = AllPromises.length;
+		
+		var doneParams = {};
+		AllPromises.forEach(function(item,index){
+			item.__promise__name = index;
+			doneParams[index] = {};
+			item.then(checkAllPromiseDone,item);
 		});
 		var donePromiseCount = 0;
-		var doneParams = [];
+		
 		function checkAllPromiseDone(data){
 			donePromiseCount ++;
-			doneParams.push(data);
+			doneParams[this.__promise__name] = data;
 			if(donePromiseCount == promiseLen){
+				doneParams = makeArray(doneParams);
 				p.resolve(doneParams);
 			}
 		};
@@ -223,7 +272,13 @@
 		extend : extend,
 		escape : escape,
 		Promise:Promise,
-		when:Promise.when
+		when:Promise.when,
+		jsonp : jsonp,
+		//坑爹的接口不支持不传callback时，返回json,代理一下
+		jsonp2Json:jsonp2Json
 	});
+
+
+
 
 }).call(this);
