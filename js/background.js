@@ -11,12 +11,24 @@
 		init: function() {
 			this.proxyPostMessage();
 		},
+		checkNeedShow:function(){
+			var flag = true;
+			var now = Date.now();
+			var lastPop = LBWeather.local.get('lastPop');
+			if(lastPop && lastPop.time && (now -lastPop.time) < 1000*60*60*0.5 ){
+				flag = false;
+			}
+			return flag;
+		},
 		proxyPostMessage: function(status) {
+			var me = this;
 			chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-				if(!LBWeather.isPlainObject(request)){
-					
+				if(!LBWeather.isEmptyObject(request)){
+					LBWeather.local.set('lastPop',request.lastPop );
+					return;
 				}
-				sendResponse();
+				var flag = me.checkNeedShow();
+				flag && (sendResponse());
 			});
 		}
 	});

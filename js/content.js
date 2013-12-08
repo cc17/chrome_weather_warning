@@ -2,15 +2,28 @@
 	var Promise = LBWeather.Promise,
 		when = LBWeather.when;
 	function WeatherPop() {
-		this.tpl = '<% title %><div class="">x</div>';
+		this.tpl = '<a href="<%= link %>" target="_blank"><%= title %></a><div id="lb-w-ext00-popWrap-close" class="lb-w-ext00-popWrap-close">x</div>';
 	};
 	LBWeather.extend(WeatherPop.prototype, {
 		render: function(data) {
 			var str = LBWeather.template(this.tpl,data);
-			var div = LBWeather.Dom.create(div,{
+			var div = this.wrap = LBWeather.Dom.create('div',{
 				id:'lb-w-ext00-popWrap'
 			});
+			div.innerHTML = str;
 			document.body.appendChild(div);
+			this.bindEvt();
+		},
+		bindEvt:function(){
+			var close = LBWeather.Dom.$('lb-w-ext00-popWrap-close');
+			LBWeather.Dom.addEventListener(close,'click',handleClick.bind(this));
+			function handleClick(){
+				document.body.removeChild(this.wrap);
+				this.proxySendMes({lastPop:{
+					type:'aqi',
+					time: Date.now()
+				}});
+			};
 		},
 		fetchData:function(status){
 			var me = this;
@@ -39,13 +52,7 @@
 				me.render(popWarnings[0]);
 			};
 			//测试必现途径
-			this.render();
-			/*setTimeout(function(){
-				me.proxySendMes({lastPop:{
-					type:'aqi',
-					time: Date.now()
-				}});
-			},2000);*/
+			//this.render();
 		},
 		getDubaWeatherCityId:function(){
 			var p = new Promise();
@@ -56,9 +63,18 @@
 		},
 		getWarningApi:function(){
 			var p = new Promise();
-			LBWeather.Ajax.get('http://i.liebao.cn/bucenter/calendar/weatherWarning?t=' + Date.now()/(1000*60),function(res){
+			/*LBWeather.Ajax.get('http://i.liebao.cn/bucenter/calendar/weatherWarning?t=' + Date.now()/(1000*60),function(res){
 				p.resolve(res);
-			});
+			});*/
+			setTimeout(function(){
+				p.resolve({ 
+					data:[{
+						title:"爆表测试",
+						link:'http://www.baidu.com',
+						cityid:101100601
+					}]
+				});
+			},1000);
 			return p;
 		},
 		proxySendMes: function(param) {
